@@ -30,6 +30,7 @@
 #include <pulse/mainloop.h>
 #include <pulse/subscribe.h>
 #include <pulse/introspect.h>
+#include <pulse/error.h>
 
 #include <pulsecore/core.h>
 #include <pulsecore/core-util.h>
@@ -113,14 +114,17 @@ static pa_proplist* tunnel_new_proplist(struct userdata *u) {
 static void thread_func(void *userdata) {
     struct userdata *u = userdata;
     pa_proplist *proplist;
-    pa_memchunk memchunk;
+
+    void *p;
+    size_t readable = 0;
+    size_t read = 0;
 
     pa_assert(u);
 
     pa_log_debug("Thread starting up");
     pa_thread_mq_install(&u->thread_mq);
 
-    pa_memchunk_reset(&memchunk);
+
 
     proplist = tunnel_new_proplist(u);
     /* init libpulse */
@@ -145,9 +149,9 @@ static void thread_func(void *userdata) {
 
     for (;;) {
         int ret;
-        const void *p;
+        pa_memchunk memchunk;
+        pa_memchunk_reset(&memchunk);
 
-        size_t writable = 0;
 
         if (pa_mainloop_iterate(u->thread_mainloop, 1, &ret) < 0) {
             if (ret == 0)
@@ -156,42 +160,34 @@ static void thread_func(void *userdata) {
                 goto fail;
         }
 
-        if (PA_UNLIKELY(u->source->thread_info.rewind_requested))
-            pa_source_process_rewind(u->source, 0);
-
         if (u->connected &&
-                PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream)) &&
-                PA_SINK_IS_LINKED(u->source->thread_info.state)) {
-            /* TODO: use IS_RUNNING + cork stream */
+                PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream))) {
 
             if (pa_stream_is_corked(u->stream)) {
                 pa_stream_cork(u->stream, 0, NULL, NULL);
-            } else {
-                writable = pa_stream_writable_size(u->stream);
-                if (writable > 0) {
-                    if (memchunk.length <= 0)
-                        pa_source_render(u->source, writable, &memchunk);
+                continue;
+            }
 
-                    pa_assert(memchunk.length > 0);
+            readable = pa_stream_readable_size(u->stream);
+            if (readable > 0) {
+                /* we have new data to read */
+                if (pa_stream_peek(u->stream, (const void**) &p, &read) != 0) {
+                    pa_log(_("pa_stream_peek() failed: %s"), pa_strerror(pa_context_errno(u->context)));
+                    goto fail;
+                }
 
-                    /* we have new data to write */
-                    p = (const uint8_t *) pa_memblock_acquire(memchunk.memblock);
-                    /* TODO: ZERO COPY! */
-                    ret = pa_stream_write(u->stream,
-                                        ((uint8_t*) p + memchunk.index),
-                                        memchunk.length,
-                                        NULL,     /**< A cleanup routine for the data or NULL to request an internal copy */
-                                        0,        /** offset */
-                                        PA_SEEK_RELATIVE
-                                        );
-                    pa_memblock_release(memchunk.memblock);
-                    pa_memblock_unref(memchunk.memblock);
-                    pa_memchunk_reset(&memchunk);
+                memchunk.memblock = pa_memblock_new_fixed(u->module->core->mempool, p, read, true);
+                memchunk.length = read;
+                memchunk.index = 0;
 
-                    if (ret != 0) {
-                        /* TODO: we should consider a state change or is that already done ? */
-                        pa_log_warn("Could not write data into the stream ... ret = %i", ret);
-                    }
+                pa_source_post(u->source, &memchunk);
+                pa_memblock_unref_fixed(memchunk.memblock);
+
+                pa_stream_drop(u->stream);
+
+                if (ret != 0) {
+                    /* TODO: we should consider a state change or is that already done ? */
+                    pa_log_warn("Could not write data into the stream ... ret = %i", ret);
                 }
             }
         }
@@ -206,10 +202,6 @@ fail:
     pa_asyncmsgq_wait_for(u->thread_mq.inq, PA_MESSAGE_SHUTDOWN);
 
 finish:
-
-    if (memchunk.memblock)
-        pa_memblock_unref(memchunk.memblock);
-
     if (u->stream) {
         pa_stream_disconnect(u->stream);
         pa_stream_unref(u->stream);
@@ -288,12 +280,10 @@ static void context_state_callback(pa_context *c, void *userdata) {
             pa_context_subscribe(u->context, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL);
 
             pa_stream_set_state_callback(u->stream, stream_state_callback, userdata);
-            if (pa_stream_connect_playback(u->stream,
-                                           u->remote_source_name,
-                                           &u->bufferattr,
-                                           PA_STREAM_START_CORKED | PA_STREAM_AUTO_TIMING_UPDATE,
-                                           NULL,
-                                           NULL) < 0) {
+            if (pa_stream_connect_record(u->stream,
+                                         u->remote_source_name,
+                                         &u->bufferattr,
+                                         PA_STREAM_AUTO_TIMING_UPDATE) < 0) {
                 /* TODO fail */
             }
             u->connected = true;
@@ -330,10 +320,9 @@ static void source_update_requested_latency_cb(pa_source *s) {
 
     nbytes = pa_usec_to_bytes(block_usec, &s->sample_spec);
     pa_source_set_max_rewind_within_thread(s, nbytes);
-    pa_source_set_max_request_within_thread(s, nbytes);
 
     if (block_usec != (pa_usec_t) -1) {
-        u->bufferattr.tlength = nbytes;
+        u->bufferattr.fragsize = nbytes;
     }
 
     if (u->stream && PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream))) {
@@ -342,14 +331,14 @@ static void source_update_requested_latency_cb(pa_source *s) {
 }
 
 static int source_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t offset, pa_memchunk *chunk) {
-    struct userdata *u = PA_SINK(o)->userdata;
+    struct userdata *u = PA_SOURCE(o)->userdata;
 
     switch (code) {
-        case PA_SINK_MESSAGE_GET_LATENCY: {
+        case PA_SOURCE_MESSAGE_GET_LATENCY: {
             int negative;
             pa_usec_t remote_latency;
 
-            if (!PA_SINK_IS_LINKED(u->source->thread_info.state)) {
+            if (!PA_SOURCE_IS_LINKED(u->source->thread_info.state)) {
                 *((pa_usec_t*) data) = 0;
                 return 0;
             }
