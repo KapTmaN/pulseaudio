@@ -455,7 +455,7 @@ int pa__init(pa_module *m) {
 
     /* source callbacks */
     u->source->parent.process_msg = source_process_msg_cb;
-//    u->source->update_requested_latency = source_update_requested_latency_cb;
+    u->source->update_requested_latency = source_update_requested_latency_cb;
 
     /* set thread queue */
     pa_source_set_asyncmsgq(u->source, u->thread_mq.inq);
