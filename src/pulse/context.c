@@ -1448,3 +1448,18 @@ size_t pa_context_get_tile_size(pa_context *c, const pa_sample_spec *ss) {
     mbs = PA_ROUND_DOWN(pa_mempool_block_size_max(c->mempool), fs);
     return PA_MAX(mbs, fs);
 }
+
+int pa_context_set_cookie(pa_context *c, uint8_t *cookie, size_t cookie_size) {
+    if(cookie_size != PA_NATIVE_COOKIE_LENGTH)
+        return -PA_ERR_INVALID;
+    memcpy(c->conf->cookie, cookie, cookie_size);
+    return 0;
+}
+
+int pa_context_load_cookie_from_hex(pa_context *c, const char *cookie_as_hex) {
+    return pa_client_conf_load_cookie_from_hex(c->conf, cookie_as_hex);
+}
+
+int pa_context_load_cookie_file(pa_context *c, const char *cookie_file_path) {
+    return pa_client_conf_load_cookie_from_file(c->conf, cookie_file_path);
+}
