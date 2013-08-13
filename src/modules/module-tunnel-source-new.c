@@ -64,6 +64,7 @@ PA_MODULE_USAGE(
 
 /* libpulse callbacks */
 static void stream_state_callback(pa_stream *stream, void *userdata);
+static void stream_read_callback(pa_stream *s, size_t length, void *userdata);
 static void context_state_callback(pa_context *c, void *userdata);
 static void source_update_requested_latency_cb(pa_source *s);
 
@@ -111,13 +112,42 @@ static pa_proplist* tunnel_new_proplist(struct userdata *u) {
     return proplist;
 }
 
+static void stream_read_callback(pa_stream *s, size_t length, void *userdata) {
+    struct userdata *u = userdata;
+    void *p;
+    size_t readable = 0;
+    size_t read = 0;
+
+    pa_memchunk memchunk;
+    pa_memchunk_reset(&memchunk);
+
+    if (u->connected &&
+            PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream))) {
+
+        readable = pa_stream_readable_size(u->stream);
+        if (readable > 0) {
+            /* we have new data to read */
+            if (pa_stream_peek(u->stream, (const void**) &p, &read) != 0) {
+                pa_log(_("pa_stream_peek() failed: %s"), pa_strerror(pa_context_errno(u->context)));
+                u->thread_mainloop_api->quit(u->thread_mainloop_api, TUNNEL_THREAD_FAILED_MAINLOOP);
+            }
+
+            memchunk.memblock = pa_memblock_new_fixed(u->module->core->mempool, p, read, true);
+            memchunk.length = read;
+            memchunk.index = 0;
+
+            pa_source_post(u->source, &memchunk);
+            pa_memblock_unref_fixed(memchunk.memblock);
+
+            pa_stream_drop(u->stream);
+        }
+    }
+}
+
 static void thread_func(void *userdata) {
     struct userdata *u = userdata;
     pa_proplist *proplist;
 
-    void *p;
-    size_t readable = 0;
-    size_t read = 0;
 
     pa_assert(u);
 
@@ -149,9 +179,6 @@ static void thread_func(void *userdata) {
 
     for (;;) {
         int ret;
-        pa_memchunk memchunk;
-        pa_memchunk_reset(&memchunk);
-
 
         if (pa_mainloop_iterate(u->thread_mainloop, 1, &ret) < 0) {
             if (ret == 0)
@@ -160,37 +187,6 @@ static void thread_func(void *userdata) {
                 goto fail;
         }
 
-        if (u->connected &&
-                PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream))) {
-
-            if (pa_stream_is_corked(u->stream)) {
-                pa_stream_cork(u->stream, 0, NULL, NULL);
-                continue;
-            }
-
-            readable = pa_stream_readable_size(u->stream);
-            if (readable > 0) {
-                /* we have new data to read */
-                if (pa_stream_peek(u->stream, (const void**) &p, &read) != 0) {
-                    pa_log(_("pa_stream_peek() failed: %s"), pa_strerror(pa_context_errno(u->context)));
-                    goto fail;
-                }
-
-                memchunk.memblock = pa_memblock_new_fixed(u->module->core->mempool, p, read, true);
-                memchunk.length = read;
-                memchunk.index = 0;
-
-                pa_source_post(u->source, &memchunk);
-                pa_memblock_unref_fixed(memchunk.memblock);
-
-                pa_stream_drop(u->stream);
-
-                if (ret != 0) {
-                    /* TODO: we should consider a state change or is that already done ? */
-                    pa_log_warn("Could not write data into the stream ... ret = %i", ret);
-                }
-            }
-        }
     }
 fail:
     /* If this was no regular exit from the loop we have to continue
@@ -280,13 +276,17 @@ static void context_state_callback(pa_context *c, void *userdata) {
             pa_context_subscribe(u->context, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL);
 
             pa_stream_set_state_callback(u->stream, stream_state_callback, userdata);
+            pa_stream_set_read_callback(u->stream, stream_read_callback, userdata);
             if (pa_stream_connect_record(u->stream,
                                          u->remote_source_name,
                                          &u->bufferattr,
                                          PA_STREAM_AUTO_TIMING_UPDATE) < 0) {
-                /* TODO fail */
+                /* failed */
+                u->thread_mainloop_api->quit(u->thread_mainloop_api, TUNNEL_THREAD_FAILED_MAINLOOP);
+            } else {
+                /* successfull connect */
+                u->connected = true;
             }
-            u->connected = true;
             break;
         }
         case PA_CONTEXT_FAILED:
@@ -415,6 +415,7 @@ int pa__init(pa_module *m) {
     u->bufferattr.minreq = (uint32_t) -1;
     u->bufferattr.prebuf = (uint32_t) -1;
     u->bufferattr.tlength = (uint32_t) -1;
+    u->bufferattr.fragsize = (uint32_t) -1;
 
     pa_thread_mq_init_thread_mainloop(&u->thread_mq, m->core->mainloop, pa_mainloop_get_api(u->thread_mainloop));
 
@@ -454,7 +455,7 @@ int pa__init(pa_module *m) {
 
     /* source callbacks */
     u->source->parent.process_msg = source_process_msg_cb;
-    u->source->update_requested_latency = source_update_requested_latency_cb;
+//    u->source->update_requested_latency = source_update_requested_latency_cb;
 
     /* set thread queue */
     pa_source_set_asyncmsgq(u->source, u->thread_mq.inq);
