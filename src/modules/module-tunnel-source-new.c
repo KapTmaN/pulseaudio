@@ -62,7 +62,6 @@ PA_MODULE_USAGE(
 
 #define TUNNEL_THREAD_FAILED_MAINLOOP 1
 
-/* libpulse callbacks */
 static void stream_state_cb(pa_stream *stream, void *userdata);
 static void stream_read_cb(pa_stream *s, size_t length, void *userdata);
 static void context_state_cb(pa_context *c, void *userdata);
@@ -76,7 +75,6 @@ struct userdata {
     pa_mainloop *thread_mainloop;
     pa_mainloop_api *thread_mainloop_api;
 
-    /* libpulse context */
     pa_context *context;
     pa_stream *stream;
 
@@ -126,7 +124,6 @@ static void stream_read_cb(pa_stream *s, size_t length, void *userdata) {
 
         readable = pa_stream_readable_size(u->stream);
         if (readable > 0) {
-            /* we have new data to read */
             if (pa_stream_peek(u->stream, (const void**) &p, &read) != 0) {
                 pa_log(_("pa_stream_peek() failed: %s"), pa_strerror(pa_context_errno(u->context)));
                 u->thread_mainloop_api->quit(u->thread_mainloop_api, TUNNEL_THREAD_FAILED_MAINLOOP);
@@ -157,7 +154,6 @@ static void thread_func(void *userdata) {
 
 
     proplist = tunnel_new_proplist(u);
-    /* init libpulse */
     u->context = pa_context_new_with_proplist(pa_mainloop_get_api(u->thread_mainloop),
                                               "PulseAudio",
                                               proplist);
@@ -189,11 +185,6 @@ static void thread_func(void *userdata) {
 
     }
 fail:
-    /* If this was no regular exit from the loop we have to continue
-     * processing messages until we received PA_MESSAGE_SHUTDOWN
-     *
-     * Note: is this a race condition? When a PA_MESSAGE_SHUTDOWN already within the queue?
-     */
     pa_asyncmsgq_post(u->thread_mq.outq, PA_MSGOBJECT(u->module->core), PA_CORE_MESSAGE_UNLOAD_MODULE, u->module, 0, NULL, NULL);
     pa_asyncmsgq_wait_for(u->thread_mq.inq, PA_MESSAGE_SHUTDOWN);
 
@@ -453,11 +444,10 @@ int pa__init(pa_module *m) {
     pa_source_new_data_done(&source_data);
     u->source->userdata = u;
 
-    /* source callbacks */
     u->source->parent.process_msg = source_process_msg_cb;
     u->source->update_requested_latency = source_update_requested_latency_cb;
 
-    /* set thread queue */
+    /* set thread message queue */
     pa_source_set_asyncmsgq(u->source, u->thread_mq.inq);
 
     if (!(u->thread = pa_thread_new("tunnel-source", thread_func, u))) {
