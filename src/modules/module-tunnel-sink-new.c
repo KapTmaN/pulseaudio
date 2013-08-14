@@ -62,8 +62,8 @@ PA_MODULE_USAGE(
 #define TUNNEL_THREAD_FAILED_MAINLOOP 1
 
 /* libpulse callbacks */
-static void stream_state_callback(pa_stream *stream, void *userdata);
-static void context_state_callback(pa_context *c, void *userdata);
+static void stream_state_cb(pa_stream *stream, void *userdata);
+static void context_state_cb(pa_context *c, void *userdata);
 static void sink_update_requested_latency_cb(pa_sink *s);
 
 struct userdata {
@@ -134,7 +134,7 @@ static void thread_func(void *userdata) {
         goto fail;
     }
 
-    pa_context_set_state_callback(u->context, context_state_callback, u);
+    pa_context_set_state_callback(u->context, context_state_cb, u);
     if (pa_context_connect(u->context,
                            u->remote_server,
                            PA_CONTEXT_NOFAIL | PA_CONTEXT_NOAUTOSPAWN,
@@ -225,7 +225,7 @@ finish:
     pa_log_debug("Thread shutting down");
 }
 
-static void stream_state_callback(pa_stream *stream, void *userdata) {
+static void stream_state_cb(pa_stream *stream, void *userdata) {
     struct userdata *u = userdata;
 
     pa_assert(u);
@@ -244,7 +244,7 @@ static void stream_state_callback(pa_stream *stream, void *userdata) {
     }
 }
 
-static void context_state_callback(pa_context *c, void *userdata) {
+static void context_state_cb(pa_context *c, void *userdata) {
     struct userdata *u = userdata;
     int c_errno;
 
@@ -287,7 +287,7 @@ static void context_state_callback(pa_context *c, void *userdata) {
 
             pa_context_subscribe(u->context, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL);
 
-            pa_stream_set_state_callback(u->stream, stream_state_callback, userdata);
+            pa_stream_set_state_callback(u->stream, stream_state_cb, userdata);
             if (pa_stream_connect_playback(u->stream,
                                            u->remote_sink_name,
                                            &u->bufferattr,
