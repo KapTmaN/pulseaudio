@@ -239,8 +239,6 @@ static void stream_state_cb(pa_stream *stream, void *userdata) {
 
 static void context_state_cb(pa_context *c, void *userdata) {
     struct userdata *u = userdata;
-    int c_errno;
-
     pa_assert(u);
 
     switch (pa_context_get_state(c)) {
@@ -292,8 +290,7 @@ static void context_state_cb(pa_context *c, void *userdata) {
             break;
         }
         case PA_CONTEXT_FAILED:
-            c_errno = pa_context_errno(u->context);
-            pa_log_debug("Context failed with err %d.", c_errno);
+            pa_log_debug("Context failed with %s.", pa_strerror(pa_context_errno(u->context)));
             u->connected = false;
             u->thread_mainloop_api->quit(u->thread_mainloop_api, TUNNEL_THREAD_FAILED_MAINLOOP);
             break;
