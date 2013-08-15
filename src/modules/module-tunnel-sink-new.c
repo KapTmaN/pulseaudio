@@ -100,6 +100,7 @@ static const char* const valid_modargs[] = {
 
 static pa_proplist* tunnel_new_proplist(struct userdata *u) {
     pa_proplist *proplist = pa_proplist_new();
+    pa_assert(proplist);
     pa_proplist_sets(proplist, PA_PROP_APPLICATION_NAME, "PulseAudio");
     pa_proplist_sets(proplist, PA_PROP_APPLICATION_ID, "org.PulseAudio.PulseAudio");
     pa_proplist_sets(proplist, PA_PROP_APPLICATION_VERSION, PACKAGE_VERSION);
@@ -260,7 +261,6 @@ static void context_state_cb(pa_context *c, void *userdata) {
 
             proplist = tunnel_new_proplist(u);
             pa_proplist_sets(proplist, PA_PROP_MEDIA_ROLE, "sound");
-            pa_assert(proplist);
 
             u->stream = pa_stream_new_with_proplist(u->context,
                                                     stream_name,
