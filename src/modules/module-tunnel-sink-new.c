@@ -167,8 +167,7 @@ static void thread_func(void *userdata) {
             } else {
                 writable = pa_stream_writable_size(u->stream);
                 if (writable > 0) {
-                    if (memchunk.length <= 0)
-                        pa_sink_render(u->sink, writable, &memchunk);
+                    pa_sink_render(u->sink, writable, &memchunk);
 
                     pa_assert(memchunk.length > 0);
 
@@ -187,8 +186,8 @@ static void thread_func(void *userdata) {
                     pa_memchunk_reset(&memchunk);
 
                     if (ret != 0) {
-                        /* TODO: we should consider a state change or is that already done ? */
-                        pa_log_warn("Could not write data into the stream ... ret = %i", ret);
+                        pa_log_error("Could not write data into the stream ... ret = %i", ret);
+                        u->thread_mainloop_api->quit(u->thread_mainloop_api, TUNNEL_THREAD_FAILED_MAINLOOP);
                     }
                 }
             }
