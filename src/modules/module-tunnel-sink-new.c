@@ -268,15 +268,13 @@ static void context_state_cb(pa_context *c, void *userdata) {
             pa_proplist_free(proplist);
             pa_xfree(stream_name);
 
-            if(!u->stream) {
+            if (!u->stream) {
                 pa_log_error("Could not create a stream.");
                 u->thread_mainloop_api->quit(u->thread_mainloop_api, TUNNEL_THREAD_FAILED_MAINLOOP);
                 return;
             }
 
-
             pa_context_subscribe(u->context, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL);
-
             pa_stream_set_state_callback(u->stream, stream_state_cb, userdata);
             if (pa_stream_connect_playback(u->stream,
                                            u->remote_sink_name,
@@ -334,7 +332,7 @@ static int sink_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t of
     struct userdata *u = PA_SINK(o)->userdata;
 
     switch (code) {
-        case PA_SINK_MESSAGE_GET_LATENCY: {
+        case PA_SINK_MESSAGE_GET_LATENCY:
             int negative;
             pa_usec_t remote_latency;
 
@@ -361,7 +359,6 @@ static int sink_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t of
             *((pa_usec_t*) data) =
                 remote_latency;
             return 0;
-        }
     }
     return pa_sink_process_msg(o, code, data, offset, chunk);
 }
