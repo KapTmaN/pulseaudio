@@ -169,7 +169,7 @@ static void thread_func(void *userdata) {
             } else {
                 writable = pa_stream_writable_size(u->stream);
                 if (writable > 0) {
-                    pa_sink_render(u->sink, writable, &memchunk);
+                    pa_sink_render_full(u->sink, writable, &memchunk);
 
                     pa_assert(memchunk.length > 0);
 
