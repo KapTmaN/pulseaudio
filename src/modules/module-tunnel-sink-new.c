@@ -327,7 +327,6 @@ static void sink_update_requested_latency_cb(pa_sink *s) {
 
     nbytes = pa_usec_to_bytes(block_usec, &s->sample_spec);
     pa_sink_set_max_rewind_within_thread(s, 0);
-    pa_sink_set_max_request_within_thread(s, 0);
 
     if (block_usec != (pa_usec_t) -1) {
         u->bufferattr.tlength = nbytes;
