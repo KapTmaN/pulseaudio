@@ -232,6 +232,9 @@ static void stream_state_cb(pa_stream *stream, void *userdata) {
         case PA_STREAM_TERMINATED:
             pa_log_debug("Stream terminated.");
             break;
+        case PA_STREAM_READY:
+            /* just call our sink callback to ensure stream latency */
+            sink_update_requested_latency_cb(u->sink);
         default:
             break;
     }
