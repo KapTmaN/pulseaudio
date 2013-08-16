@@ -30,6 +30,7 @@
 #include <pulse/mainloop.h>
 #include <pulse/subscribe.h>
 #include <pulse/introspect.h>
+#include <pulse/error.h>
 
 #include <pulsecore/core.h>
 #include <pulsecore/core-util.h>
