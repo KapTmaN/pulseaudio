@@ -95,8 +95,8 @@ static const char* const valid_modargs[] = {
     "channels",
     "rate",
     "channel_map",
-    "cookie", /* unimplemented */
-    "reconnect", /* reconnect if server comes back again - unimplemented*/
+ /* "cookie", unimplemented */
+ /* "reconnect", reconnect if server comes back again - unimplemented */
     NULL,
 };
 
@@ -146,13 +146,10 @@ static void thread_func(void *userdata) {
     struct userdata *u = userdata;
     pa_proplist *proplist;
 
-
     pa_assert(u);
 
     pa_log_debug("Thread starting up");
     pa_thread_mq_install(&u->thread_mq);
-
-
 
     proplist = tunnel_new_proplist(u);
     u->context = pa_context_new_with_proplist(pa_mainloop_get_api(u->thread_mainloop),

@@ -93,8 +93,8 @@ static const char* const valid_modargs[] = {
     "channels",
     "rate",
     "channel_map",
-    "cookie", /* unimplemented */
-    "reconnect", /* reconnect if server comes back again - unimplemented*/
+   /* "cookie", unimplemented */
+   /* "reconnect", reconnect if server comes back again - unimplemented */
     NULL,
 };
 
