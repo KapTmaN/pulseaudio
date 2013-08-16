@@ -267,8 +267,8 @@ static void context_state_cb(pa_context *c, void *userdata) {
             if (pa_stream_connect_record(u->stream,
                                          u->remote_source_name,
                                          &u->bufferattr,
-                                         PA_STREAM_AUTO_TIMING_UPDATE) < 0) {
-                /* failed */
+                                         PA_STREAM_INTERPOLATE_TIMING || PA_STREAM_DONT_MOVE || PA_STREAM_AUTO_TIMING_UPDATE) < 0) {
+                pa_log_debug("Could not create stream.");
                 u->thread_mainloop_api->quit(u->thread_mainloop_api, TUNNEL_THREAD_FAILED_MAINLOOP);
             } else {
                 /* successfull connect */

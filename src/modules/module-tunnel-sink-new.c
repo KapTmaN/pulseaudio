@@ -278,10 +278,11 @@ static void context_state_cb(pa_context *c, void *userdata) {
             if (pa_stream_connect_playback(u->stream,
                                            u->remote_sink_name,
                                            &u->bufferattr,
-                                           PA_STREAM_START_CORKED | PA_STREAM_AUTO_TIMING_UPDATE,
+                                           PA_STREAM_INTERPOLATE_TIMING || PA_STREAM_DONT_MOVE | PA_STREAM_START_CORKED | PA_STREAM_AUTO_TIMING_UPDATE,
                                            NULL,
                                            NULL) < 0) {
-                /* TODO fail */
+                pa_log_error("Could not connect stream.");
+                u->thread_mainloop_api->quit(u->thread_mainloop_api, TUNNEL_THREAD_FAILED_MAINLOOP);
             }
             u->connected = true;
             break;
