@@ -292,6 +292,7 @@ static void source_update_requested_latency_cb(pa_source *s) {
     struct userdata *u;
     size_t nbytes;
     pa_usec_t block_usec;
+    pa_operation *operation;
 
     pa_source_assert_ref(s);
     pa_assert_se(u = s->userdata);
@@ -309,7 +310,8 @@ static void source_update_requested_latency_cb(pa_source *s) {
     }
 
     if (u->stream && PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream))) {
-        pa_stream_set_buffer_attr(u->stream, &u->bufferattr, NULL, NULL);
+        if((operation = pa_stream_set_buffer_attr(u->stream, &u->bufferattr, NULL, NULL)))
+            pa_operation_unref(operation);
     }
 }
 

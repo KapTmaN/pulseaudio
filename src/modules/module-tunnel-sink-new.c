@@ -114,6 +114,7 @@ static void thread_func(void *userdata) {
     struct userdata *u = userdata;
     pa_proplist *proplist;
     pa_memchunk memchunk;
+    pa_operation *operation;
 
     pa_assert(u);
 
@@ -165,7 +166,9 @@ static void thread_func(void *userdata) {
             /* TODO: use IS_RUNNING + cork stream */
 
             if (pa_stream_is_corked(u->stream)) {
-                pa_stream_cork(u->stream, 0, NULL, NULL);
+                if((operation = pa_stream_cork(u->stream, 0, NULL, NULL))) {
+                    pa_operation_unref(operation);
+                }
             } else {
                 writable = pa_stream_writable_size(u->stream);
                 if (writable > 0) {
@@ -317,6 +320,7 @@ static void context_state_cb(pa_context *c, void *userdata) {
 
 static void sink_update_requested_latency_cb(pa_sink *s) {
     struct userdata *u;
+    pa_operation *operation;
     size_t nbytes;
     pa_usec_t block_usec;
 
@@ -336,7 +340,8 @@ static void sink_update_requested_latency_cb(pa_sink *s) {
     }
 
     if (u->stream && (pa_stream_get_state(u->stream) == PA_STREAM_READY)) {
-        pa_stream_set_buffer_attr(u->stream, &u->bufferattr, NULL, NULL);
+        if((operation = pa_stream_set_buffer_attr(u->stream, &u->bufferattr, NULL, NULL)))
+            pa_operation_unref(operation);
     }
 }
 
