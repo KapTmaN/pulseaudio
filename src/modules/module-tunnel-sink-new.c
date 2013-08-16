@@ -62,6 +62,7 @@ PA_MODULE_USAGE(
 #define TUNNEL_THREAD_FAILED_MAINLOOP 1
 
 static void stream_state_cb(pa_stream *stream, void *userdata);
+static void stream_buffer_attr_cb(pa_stream *stream, void *userdata);
 static void context_state_cb(pa_context *c, void *userdata);
 static void sink_update_requested_latency_cb(pa_sink *s);
 
@@ -236,6 +237,15 @@ static void stream_state_cb(pa_stream *stream, void *userdata) {
     }
 }
 
+static void stream_buffer_attr_cb(pa_stream *stream, void *userdata) {
+    struct userdata *u = userdata;
+    const pa_buffer_attr *attr;
+    pa_assert(u);
+
+    attr = pa_stream_get_buffer_attr(u->stream);
+    u->bufferattr = *attr;
+}
+
 static void context_state_cb(pa_context *c, void *userdata) {
     struct userdata *u = userdata;
     pa_assert(u);
@@ -274,6 +284,7 @@ static void context_state_cb(pa_context *c, void *userdata) {
             }
 
             pa_stream_set_state_callback(u->stream, stream_state_cb, userdata);
+            pa_stream_set_buffer_attr_callback(u->stream, stream_buffer_attr_cb, userdata);
             if (pa_stream_connect_playback(u->stream,
                                            u->remote_sink_name,
                                            &u->bufferattr,
