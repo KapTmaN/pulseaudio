@@ -161,7 +161,7 @@ static void thread_func(void *userdata) {
             pa_sink_process_rewind(u->sink, 0);
 
         if (u->connected &&
-                PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream)) &&
+                pa_stream_get_state(u->stream) == PA_STREAM_READY &&
                 PA_SINK_IS_LINKED(u->sink->thread_info.state)) {
             /* TODO: use IS_RUNNING + cork stream */
 
