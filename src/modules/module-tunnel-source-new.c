@@ -334,7 +334,7 @@ static int source_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t 
                 return 0;
             }
 
-            if (!PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream))) {
+            if (pa_stream_get_state(u->stream) != PA_STREAM_READY) {
                 *((pa_usec_t*) data) = 0;
                 return 0;
             }
