@@ -176,12 +176,11 @@ static void thread_func(void *userdata) {
                     p = (const uint8_t *) pa_memblock_acquire(memchunk.memblock);
                     /* TODO: ZERO COPY! */
                     ret = pa_stream_write(u->stream,
-                                        ((uint8_t*) p + memchunk.index),
-                                        memchunk.length,
-                                        NULL,     /**< A cleanup routine for the data or NULL to request an internal copy */
-                                        0,        /** offset */
-                                        PA_SEEK_RELATIVE
-                                        );
+                                         ((uint8_t*) p + memchunk.index),
+                                         memchunk.length,
+                                         NULL,     /**< A cleanup routine for the data or NULL to request an internal copy */
+                                         0,        /** offset */
+                                         PA_SEEK_RELATIVE);
                     pa_memblock_release(memchunk.memblock);
                     pa_memblock_unref(memchunk.memblock);
                     pa_memchunk_reset(&memchunk);
