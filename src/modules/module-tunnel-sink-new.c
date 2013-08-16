@@ -437,7 +437,6 @@ int pa__init(pa_module *m) {
         pa_sink_new_data_done(&sink_data);
         goto fail;
     }
-    /* TODO: check PA_SINK_LATENCY + PA_SINK_DYNAMIC_LATENCY */
     if (!(u->sink = pa_sink_new(m->core, &sink_data, (PA_SINK_LATENCY|PA_SINK_DYNAMIC_LATENCY|PA_SINK_NETWORK)))) {
         pa_log("Failed to create sink.");
         pa_sink_new_data_done(&sink_data);

@@ -345,9 +345,7 @@ static int source_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t 
             }
 
             *((pa_usec_t*) data) =
-                /* Add the latency from libpulse */
                 remote_latency;
-                /* do we have to add more latency here ? */
             return 0;
     }
     return pa_source_process_msg(o, code, data, offset, chunk);
@@ -428,7 +426,6 @@ int pa__init(pa_module *m) {
         pa_source_new_data_done(&source_data);
         goto fail;
     }
-    /* TODO: check PA_SINK_LATENCY + PA_SINK_DYNAMIC_LATENCY */
     if (!(u->source = pa_source_new(m->core, &source_data, (PA_SINK_LATENCY|PA_SINK_DYNAMIC_LATENCY|PA_SINK_NETWORK)))) {
         pa_log("Failed to create source.");
         pa_source_new_data_done(&source_data);
@@ -441,7 +438,6 @@ int pa__init(pa_module *m) {
     u->source->parent.process_msg = source_process_msg_cb;
     u->source->update_requested_latency = source_update_requested_latency_cb;
 
-    /* set thread message queue */
     pa_source_set_asyncmsgq(u->source, u->thread_mq.inq);
 
     if (!(u->thread = pa_thread_new("tunnel-source", thread_func, u))) {
