@@ -332,7 +332,7 @@ static void sink_update_requested_latency_cb(pa_sink *s) {
         u->bufferattr.tlength = nbytes;
     }
 
-    if (u->stream && PA_STREAM_IS_GOOD(pa_stream_get_state(u->stream))) {
+    if (u->stream && (pa_stream_get_state(u->stream) == PA_STREAM_READY)) {
         pa_stream_set_buffer_attr(u->stream, &u->bufferattr, NULL, NULL);
     }
 }
