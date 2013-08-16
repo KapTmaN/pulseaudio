@@ -28,7 +28,6 @@
 #include <pulse/xmalloc.h>
 #include <pulse/stream.h>
 #include <pulse/mainloop.h>
-#include <pulse/subscribe.h>
 #include <pulse/introspect.h>
 #include <pulse/error.h>
 
@@ -274,7 +273,6 @@ static void context_state_cb(pa_context *c, void *userdata) {
                 return;
             }
 
-            pa_context_subscribe(u->context, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL);
             pa_stream_set_state_callback(u->stream, stream_state_cb, userdata);
             if (pa_stream_connect_playback(u->stream,
                                            u->remote_sink_name,
