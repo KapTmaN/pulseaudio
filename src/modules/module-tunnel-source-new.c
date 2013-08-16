@@ -305,7 +305,7 @@ static void source_update_requested_latency_cb(pa_source *s) {
         block_usec = s->thread_info.max_latency;
 
     nbytes = pa_usec_to_bytes(block_usec, &s->sample_spec);
-    pa_source_set_max_rewind_within_thread(s, nbytes);
+    pa_source_set_max_rewind_within_thread(s, 0);
 
     if (block_usec != (pa_usec_t) -1) {
         u->bufferattr.fragsize = nbytes;
