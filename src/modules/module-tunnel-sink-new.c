@@ -333,7 +333,7 @@ static int sink_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t of
     struct userdata *u = PA_SINK(o)->userdata;
 
     switch (code) {
-        case PA_SINK_MESSAGE_GET_LATENCY:
+        case PA_SINK_MESSAGE_GET_LATENCY: {
             int negative;
             pa_usec_t remote_latency;
 
@@ -360,6 +360,7 @@ static int sink_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t of
             *((pa_usec_t*) data) =
                 remote_latency;
             return 0;
+        }
     }
     return pa_sink_process_msg(o, code, data, offset, chunk);
 }

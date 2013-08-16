@@ -320,7 +320,7 @@ static int source_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t 
     struct userdata *u = PA_SOURCE(o)->userdata;
 
     switch (code) {
-        case PA_SOURCE_MESSAGE_GET_LATENCY:
+        case PA_SOURCE_MESSAGE_GET_LATENCY: {
             int negative;
             pa_usec_t remote_latency;
 
@@ -347,6 +347,7 @@ static int source_process_msg_cb(pa_msgobject *o, int code, void *data, int64_t 
             *((pa_usec_t*) data) =
                 remote_latency;
             return 0;
+        }
     }
     return pa_source_process_msg(o, code, data, offset, chunk);
 }
